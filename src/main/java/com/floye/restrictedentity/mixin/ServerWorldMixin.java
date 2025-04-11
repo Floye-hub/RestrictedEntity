@@ -35,10 +35,7 @@ public abstract class ServerWorldMixin {
         Identifier entityId = Registries.ENTITY_TYPE.getId(entity.getType());
         BlockPos pos = entity.getBlockPos();
 
-        // Log de la tentative de spawn
-        System.out.println("[CobbleProtect] spawnEntity attempt: entity="
-                + (entityId != null ? entityId.toString() : "null")
-                + ", dimension=" + worldDimension + ", position=" + pos);
+        
 
         // Parcours des zones restreintes
         for (ForbiddenSpawnConfig.RestrictedZone zone : config.restrictedZones) {
@@ -50,8 +47,6 @@ public abstract class ServerWorldMixin {
                 continue;
             }
             if (isInRestrictedZone(pos, zone)) {
-                System.out.println("[CobbleProtect] Cancelling spawnEntity for "
-                        + entityId.toString() + " in zone " + zone.name + " at " + pos);
                 cir.setReturnValue(false);
                 cir.cancel();
                 return;
