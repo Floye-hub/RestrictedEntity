@@ -15,14 +15,16 @@ public class ForbiddenSpawnConfig {
         public String dimension;
         public Position min;
         public Position max;
+        public String spawnType; // "all" ou "natural"
 
         // Constructeur
-        public RestrictedZone(String name, String entity, String dimension, Position min, Position max) {
+        public RestrictedZone(String name, String entity, String dimension, Position min, Position max, String spawnType) {
             this.name = name;
             this.entity = entity;
             this.dimension = dimension;
             this.min = min;
             this.max = max;
+            this.spawnType = spawnType;
         }
     }
 

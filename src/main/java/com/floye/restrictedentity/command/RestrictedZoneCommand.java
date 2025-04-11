@@ -24,12 +24,11 @@ public class RestrictedZoneCommand {
                 .then(CommandManager.literal("add")
                         .then(CommandManager.argument("name", StringArgumentType.string())
                                 .then(CommandManager.argument("entity", StringArgumentType.string())
-                                        // Suggestions pour l'argument "entity" : liste les identifiants de toutes les entités connues, avec des guillemets.
+                                        // Suggestions pour l'argument "entity"
                                         .suggests((context, builder) -> {
                                             Registries.ENTITY_TYPE.forEach((entityType) -> {
                                                 Identifier id = Registries.ENTITY_TYPE.getId(entityType);
                                                 if (id != null) {
-                                                    // Suggère l'identifiant entouré de guillemets
                                                     builder.suggest("\"" + id.toString() + "\"");
                                                 }
                                             });
@@ -49,9 +48,9 @@ public class RestrictedZoneCommand {
                                                                         .then(CommandManager.argument("max_x", IntegerArgumentType.integer())
                                                                                 .then(CommandManager.argument("max_y", IntegerArgumentType.integer())
                                                                                         .then(CommandManager.argument("max_z", IntegerArgumentType.integer())
+                                                                                                // Exécution avec spawnType par défaut ("all")
                                                                                                 .executes(context -> {
                                                                                                     String name = StringArgumentType.getString(context, "name");
-                                                                                                    // Récupération et suppression des éventuels guillemets
                                                                                                     String entity = StringArgumentType.getString(context, "entity").replaceAll("^\"|\"$", "");
                                                                                                     String dimension = StringArgumentType.getString(context, "dimension").replaceAll("^\"|\"$", "");
 
@@ -61,25 +60,64 @@ public class RestrictedZoneCommand {
                                                                                                     int maxX = IntegerArgumentType.getInteger(context, "max_x");
                                                                                                     int maxY = IntegerArgumentType.getInteger(context, "max_y");
                                                                                                     int maxZ = IntegerArgumentType.getInteger(context, "max_z");
+                                                                                                    String spawnType = "all"; // Valeur par défaut
 
-                                                                                                    // Récupération de la config (la config doit avoir été chargée via ConfigLoader.loadConfig())
                                                                                                     ForbiddenSpawnConfig config = ConfigLoader.getConfig();
                                                                                                     if (config == null) {
                                                                                                         config = new ForbiddenSpawnConfig();
                                                                                                         config.restrictedZones = new java.util.ArrayList<>();
                                                                                                     }
-                                                                                                    // Création de la zone à ajouter en utilisant les types internes correctement
                                                                                                     ForbiddenSpawnConfig.Position min = new ForbiddenSpawnConfig.Position(minX, minY, minZ);
                                                                                                     ForbiddenSpawnConfig.Position max = new ForbiddenSpawnConfig.Position(maxX, maxY, maxZ);
                                                                                                     ForbiddenSpawnConfig.RestrictedZone zone =
-                                                                                                            new ForbiddenSpawnConfig.RestrictedZone(name, entity, dimension, min, max);
+                                                                                                            new ForbiddenSpawnConfig.RestrictedZone(name, entity, dimension, min, max, spawnType);
 
                                                                                                     config.restrictedZones.add(zone);
                                                                                                     ConfigLoader.saveConfig();
-                                                                                                    context.getSource().sendFeedback(() -> Text.literal("Zone ajoutée : " + name), true);
+                                                                                                    context.getSource().sendFeedback(() -> Text.literal("Zone ajoutée : " + name + " spawnType: " + spawnType), true);
                                                                                                     return 1;
-                                                                                                })))))))))))
-                // Sous-commande pour supprimer une zone par son nom
+                                                                                                })
+                                                                                                // Optionnellement, spécifier spawnType
+                                                                                                .then(CommandManager.argument("spawnType", StringArgumentType.string())
+                                                                                                        .executes(context -> {
+                                                                                                            String name = StringArgumentType.getString(context, "name");
+                                                                                                            String entity = StringArgumentType.getString(context, "entity").replaceAll("^\"|\"$", "");
+                                                                                                            String dimension = StringArgumentType.getString(context, "dimension").replaceAll("^\"|\"$", "");
+
+                                                                                                            int minX = IntegerArgumentType.getInteger(context, "min_x");
+                                                                                                            int minY = IntegerArgumentType.getInteger(context, "min_y");
+                                                                                                            int minZ = IntegerArgumentType.getInteger(context, "min_z");
+                                                                                                            int maxX = IntegerArgumentType.getInteger(context, "max_x");
+                                                                                                            int maxY = IntegerArgumentType.getInteger(context, "max_y");
+                                                                                                            int maxZ = IntegerArgumentType.getInteger(context, "max_z");
+                                                                                                            String spawnType = StringArgumentType.getString(context, "spawnType").toLowerCase();
+
+                                                                                                            ForbiddenSpawnConfig config = ConfigLoader.getConfig();
+                                                                                                            if (config == null) {
+                                                                                                                config = new ForbiddenSpawnConfig();
+                                                                                                                config.restrictedZones = new java.util.ArrayList<>();
+                                                                                                            }
+                                                                                                            ForbiddenSpawnConfig.Position min = new ForbiddenSpawnConfig.Position(minX, minY, minZ);
+                                                                                                            ForbiddenSpawnConfig.Position max = new ForbiddenSpawnConfig.Position(maxX, maxY, maxZ);
+                                                                                                            ForbiddenSpawnConfig.RestrictedZone zone =
+                                                                                                                    new ForbiddenSpawnConfig.RestrictedZone(name, entity, dimension, min, max, spawnType);
+
+                                                                                                            config.restrictedZones.add(zone);
+                                                                                                            ConfigLoader.saveConfig();
+                                                                                                            context.getSource().sendFeedback(() -> Text.literal("Zone ajoutée : " + name + " spawnType: " + spawnType), true);
+                                                                                                            return 1;
+                                                                                                        })
+                                                                                                )
+                                                                                        )
+                                                                                )
+                                                                        )
+                                                                )
+                                                        )
+                                                )
+                                        )
+                                )
+                        )
+                        // Sous-commande pour supprimer une zone par son nom
                 .then(CommandManager.literal("remove")
                         .then(CommandManager.argument("name", StringArgumentType.string())
                                 .executes(context -> {
@@ -89,7 +127,6 @@ public class RestrictedZoneCommand {
                                         context.getSource().sendFeedback(() -> Text.literal("Aucune zone définie."), false);
                                         return 0;
                                     }
-                                    // Rechercher et supprimer la zone ayant le nom donné
                                     boolean removed = config.restrictedZones.removeIf(zone -> zone.name.equals(name));
                                     if (removed) {
                                         ConfigLoader.saveConfig();
@@ -99,6 +136,6 @@ public class RestrictedZoneCommand {
                                         context.getSource().sendFeedback(() -> Text.literal("Zone non trouvée : " + name), false);
                                         return 0;
                                     }
-                                }))));
+                                })))));
     }
 }

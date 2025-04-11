@@ -1,9 +1,10 @@
 package com.floye.restrictedentity.mixin;
 
-
+import com.floye.restrictedentity.EntityAccessor;
 import com.floye.restrictedentity.config.ConfigLoader;
 import com.floye.restrictedentity.config.ForbiddenSpawnConfig;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.SpawnReason;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -27,38 +28,46 @@ public abstract class ServerWorldMixin {
         }
 
         ServerWorld world = (ServerWorld) (Object) this;
-
-        // Récupère et normalise la dimension du monde.
-        String rawDim = world.getRegistryKey().toString();  // par ex : "ResourceKey[minecraft:dimension / minecraft:the_end]"
+        String rawDim = world.getRegistryKey().toString();
         String worldDimension = normalizeDimension(rawDim);
-
         Identifier entityId = Registries.ENTITY_TYPE.getId(entity.getType());
         BlockPos pos = entity.getBlockPos();
 
-        
+        System.out.println("[RestrictedEntity] Tentative de spawn pour l'entité " + entityId + " en dimension " + worldDimension + " à " + pos);
 
-        // Parcours des zones restreintes
         for (ForbiddenSpawnConfig.RestrictedZone zone : config.restrictedZones) {
-            // Compare la dimension normalisée et celle définie dans la configuration
+            // Vérification de la dimension
             if (!worldDimension.equals(zone.dimension)) {
+                System.out.println("[RestrictedEntity] Ignoré, dimension non correspondante (zone " + zone.name + " attend " + zone.dimension + ")");
                 continue;
             }
+            // Vérification du type d'entité
             if (entityId == null || !entityId.toString().equals(zone.entity)) {
+                System.out.println("[RestrictedEntity] Ignoré, type d'entité non correspondante (zone " + zone.name + " attend " + zone.entity + ")");
                 continue;
             }
+
+            // Pour les zones configurées en "natural", vérification de la raison du spawn
+            if ("natural".equals(zone.spawnType)) {
+                SpawnReason reason = ((EntityAccessor) entity).getSpawnReason();
+                System.out.println("[RestrictedEntity] SpawnReason pour " + entityId + " : " + reason);
+                if (!SpawnReason.NATURAL.equals(reason)) {
+                    System.out.println("[RestrictedEntity] Ignoré, spawn non naturel (zone " + zone.name + " configurée en natural)");
+                    continue;
+                }
+            }
+
             if (isInRestrictedZone(pos, zone)) {
+                System.out.println("[RestrictedEntity] Spawn bloqué dans la zone \"" + zone.name + "\" pour l'entité " + entityId);
                 cir.setReturnValue(false);
                 cir.cancel();
                 return;
+            } else {
+                System.out.println("[RestrictedEntity] Position hors de la zone \"" + zone.name + "\".");
             }
         }
     }
 
-    /**
-     * Extrait la partie de la dimension après le "/" et retire les crochets.
-     * Par exemple, "ResourceKey[minecraft:dimension / minecraft:the_end]"
-     * devient "minecraft:the_end"
-     */
     private String normalizeDimension(String rawDim) {
         if (rawDim == null) return "";
         int slashIndex = rawDim.indexOf("/");
